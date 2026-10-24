@@ -5,6 +5,8 @@ description: Read and update TestRail from the shell with the `testrail` CLI. Us
 
 # testrail-cli
 
+> **Renamed to test-cli.** testrail-cli 3.0.0 and later is `test-cli` (`testrail` stays as an alias). Install the new skill with `npx skills add chrisvasqm/skills --skill test-cli`. This guide still matches the `testrail` alias.
+
 `testrail` is a small TestRail CLI.
 
 ## Setup
