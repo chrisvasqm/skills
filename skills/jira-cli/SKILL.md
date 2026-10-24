@@ -52,7 +52,7 @@ jira comment add KAN-12 "text" | --file <path|->
 jira comment edit KAN-12 10001 "text" | --file <path|->
 jira comment delete KAN-12 10001 --yes
 jira sprint list [--board <id>] [--state open|active|future|closed|all]   # open = active + future
-jira sprint view [sprintId] [--board <id>]                  # default: the board's active sprint
+jira sprint view [sprintId] [--board <id>]                  # default: the board's active sprint (SPRINT_AMBIGUOUS if several)
 jira sprint create --name "Sprint 2" [--goal <text>] [--start 2026-10-24] [--end 2026-11-07] [--board <id>]   # future sprint; name ≤ 30 chars
 jira sprint edit <sprintId> [--name] [--goal] [--start] [--end]   # only the flags you pass; --goal "" clears it
 jira sprint start <sprintId> [--start <date>] [--end <date>]      # future → active; default now, for the planned length or two weeks
@@ -125,7 +125,7 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `USER_NOT_FOUND`, `USER_AMBIGUOUS`: use the exact email or accountId. `details` lists the candidates.
 - `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active). On `report sprint` and `report velocity`, the board has no sprints: use `report flow` instead.
 - `SPRINT_NOT_FUTURE`, `SPRINT_NOT_ACTIVE`: only a future sprint can start and only an active one can close; run `sprint view <id>` and tell the user its state. On `sprint` commands, `NO_SPRINTS` means the board does not use sprints (a Jira project setting the user must turn on), and `JIRA_ERROR` on `sprint start` often means the board already has an active sprint.
-- `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the board's open sprints `[{id, name, state}]`. Pass one's id.
+- `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the candidate sprints `[{id, name, state}]` (the open ones for a name; the active ones for `--sprint active`, `sprint view` or `report sprint` on a board running parallel sprints). Pass one's id; ask the user which one if it is unclear.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
 - `CONFIRM_REQUIRED`: see Deletes above.
 - `FILE_ERROR`: the `--file` path can't be read.
