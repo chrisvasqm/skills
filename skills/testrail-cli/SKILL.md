@@ -65,6 +65,7 @@ testrail result add T45 --status failed --comment "…" --create-bug   # files a
 testrail result import R3 --file results.json               # many results in one request (- reads stdin)
 
 testrail link list C12|R3|T45                # Jira keys linked to a case or run (refs) or a test (its results' defects)
+testrail link list KAN-12                    # the cases (configured suite) and runs (not in plans) whose refs hold the key
 testrail link add C12 KAN-1 [KAN-2 …] [--no-check]   # adds to the refs; on a test, adds a status-less result "Linked KAN-1"
 testrail link remove C12 KAN-1 [KAN-2 …]     # cases and runs only
 ```
@@ -98,7 +99,7 @@ How common requests map to commands (add `--json` to each):
 - "T45 fails: the login page returns a 500. Mark it failed and file a bug." → `test view T45` first, then `result add T45 --status failed --comment "…" --create-bug`.
 - "Mark C12 passed in R3." → `result add --run R3 --case C12 --status passed`.
 - "CI finished. Report results.json to R3." → check the file's shape, then `result import R3 --file results.json`.
-- "Which cases cover KAN-12? Is anything missing?" → `case list --refs KAN-12` and `case view` on each, next to `jira ticket view KAN-12`; list the acceptance criteria no case covers, and offer to create them.
+- "Which cases cover KAN-12? Is anything missing?" → `link list KAN-12` (cases and runs) or `case list --refs KAN-12` and `case view` on each, next to `jira ticket view KAN-12`; list the acceptance criteria no case covers, and offer to create them.
 - "Link KAN-14 to C12." → `link add C12 KAN-14`. On a test (T…) the link is a permanent result, so confirm first.
 - "How is R3 going?" → `run view R3`; report the counts per status and what is left untested.
 - "The sprint is over. Close R3." → `run view R3`, show the counts, and wait for the user's OK before `run close R3 --yes`. Never delete a run unless the user asks for it by name.
@@ -123,7 +124,7 @@ How common requests map to commands (add `--json` to each):
 - `test view`: `{id, title, url, caseId, runId, status, refs, preconditions, steps, expected, stepList, results: {shown: [result], hasMore}}`
 - `result add`: a result plus `{testId, bug: {key, url}|null, url}`
 - `result import`: `{runId, added: [{id, testId, caseId, status}]}`
-- `link list`: `{target, keys, url}` (`target` is e.g. `"C12"`)
+- `link list`: `{target, keys, url}` (`target` is e.g. `"C12"`); with a Jira key: `{target, cases: [{id, title, url}], runs: [{id, name, completed, url}]}` (`target` is the key)
 - `link add`: `{target, keys, added, already, checked, url}` (`keys` is the full list after the change; `checked` is true when jira-cli confirmed the new keys)
 - `link remove`: `{target, keys, removed, notLinked, url}`
 
