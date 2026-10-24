@@ -57,6 +57,8 @@ jira report sprint [sprintId] [--board <id>]                # done vs not done; 
 jira report velocity [--board <id>] [--sprints <n>]         # done per closed sprint (last 6)
 ```
 
+Every flag has a short form (jira-cli 1.4.0 or newer; long forms stay valid and read clearer): `-j` --json, `-c` --config, `-y` --yes, `-g` --global (setup); board view `-s` --status, `-S` --sprint, `-a` --assignee, `-q` --jql, `-o` --order-by, `-n` --limit; ticket view `-n` --comments; create/edit `-s` --summary, `-d` --description, `-f` --description-file, `-p` --priority, `-a` --assignee, `-l` --add-label, `-L` --remove-label, `-S` --sprint, `-t` --type, `-P` --parent, `-k` --project; ticket delete `-w` --with-subtasks; comment `-f` --file, `-n` --limit; reports `-b` --board, `-n` --limit, `-d` --days, `-s` --sprints.
+
 Reports use the configured board unless `--board` is given. Cycle time runs from the first "in progress" status to the last move to done. Lead time runs from created to done. Times are in days.
 
 ## `data` shapes
