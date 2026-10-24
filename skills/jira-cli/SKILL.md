@@ -51,13 +51,20 @@ jira comment list KAN-12 [--limit <n>]                # oldest first (50)
 jira comment add KAN-12 "text" | --file <path|->
 jira comment edit KAN-12 10001 "text" | --file <path|->
 jira comment delete KAN-12 10001 --yes
+jira sprint list [--board <id>] [--state open|active|future|closed|all]   # open = active + future
+jira sprint view [sprintId] [--board <id>]                  # default: the board's active sprint
+jira sprint create --name "Sprint 2" [--goal <text>] [--start 2026-10-24] [--end 2026-11-07] [--board <id>]   # future sprint; name ≤ 30 chars
+jira sprint edit <sprintId> [--name] [--goal] [--start] [--end]   # only the flags you pass; --goal "" clears it
+jira sprint start <sprintId> [--start <date>] [--end <date>]      # future → active; default now, for the planned length or two weeks
+jira sprint close <sprintId> --yes                          # active → closed; unfinished tickets go back to the backlog
+jira sprint delete <sprintId> --yes                         # its tickets go back to the backlog
 jira report flow [--board <id>] [--days <n>] [--limit <n>]   # throughput per week, cycle and lead time, oldest open (30 days)
 jira report workload [--board <id>] [--limit <n>]           # open tickets per person and status
 jira report sprint [sprintId] [--board <id>]                # done vs not done; default: active sprint, else last closed
 jira report velocity [--board <id>] [--sprints <n>]         # done per closed sprint (last 6)
 ```
 
-Every flag has a short form (jira-cli 1.4.0 or newer; long forms stay valid and read clearer): `-j` --json, `-c` --config, `-y` --yes, `-g` --global (setup); board view `-s` --status, `-S` --sprint, `-a` --assignee, `-q` --jql, `-o` --order-by, `-n` --limit; ticket view `-n` --comments; create/edit `-s` --summary, `-d` --description, `-f` --description-file, `-p` --priority, `-a` --assignee, `-l` --add-label, `-L` --remove-label, `-S` --sprint, `-t` --type, `-P` --parent, `-k` --project; ticket delete `-w` --with-subtasks; comment `-f` --file, `-n` --limit; reports `-b` --board, `-n` --limit, `-d` --days, `-s` --sprints.
+Every flag has a short form (jira-cli 1.4.0 or newer; long forms stay valid and read clearer): `-j` --json, `-c` --config, `-y` --yes, `-g` --global (setup); board view `-s` --status, `-S` --sprint, `-a` --assignee, `-q` --jql, `-o` --order-by, `-n` --limit; ticket view `-n` --comments; create/edit `-s` --summary, `-d` --description, `-f` --description-file, `-p` --priority, `-a` --assignee, `-l` --add-label, `-L` --remove-label, `-S` --sprint, `-t` --type, `-P` --parent, `-k` --project; ticket delete `-w` --with-subtasks; sprint `-b` --board, `-S` --state (list), `-N` --name, `-g` --goal, `-s` --start, `-e` --end; comment `-f` --file, `-n` --limit; reports `-b` --board, `-n` --limit, `-d` --days, `-s` --sprints.
 
 Reports use the configured board unless `--board` is given. Cycle time runs from the first "in progress" status to the last move to done. Lead time runs from created to done. Times are in days.
 
@@ -76,6 +83,8 @@ How common requests map to commands (add `--json` to each):
 - "Rewrite KAN-70's description." → `ticket view KAN-70` first, then `ticket edit KAN-70 --description-file -`.
 - "Delete the demo tickets." → list them, show the list, and wait for the user's OK before `ticket delete … --yes`.
 - "Write my standup." → `board --assignee me --sprint active` plus `comment list` on those tickets; write yesterday, today and blockers.
+- "Plan next sprint." → `sprint list` to see what exists, then `sprint create --name "…" --start … --end …`, and `ticket edit … --sprint <id>` for the tickets the user picks.
+- "Start the sprint." / "Close the sprint." → `sprint view` (or `sprint list`) first; `sprint start <id>`, or show the not-done tickets (`report sprint`) and wait for the user's OK before `sprint close <id> --yes`.
 - "How is the sprint going?" → `report sprint` and `report workload`. "Are we getting faster?" → `report velocity` and `report flow --days 90`.
 
 ## `data` shapes
@@ -93,6 +102,9 @@ How common requests map to commands (add `--json` to each):
 - `comment list`: `{key, total, comments: [comment]}`
 - `comment add` and `comment edit`: `{key, comment}`
 - Deletes: `{key, deleted: true}`, plus `id` for comments.
+
+- `sprint list`: `{boardId, sprints: [sprint]}`. `sprint view`, `create`, `edit`, `start`, `close`: one `sprint`. `sprint delete`: `{id, deleted: true}`.
+  - A `sprint` is `{id, name, state, goal, startDate, endDate, completeDate}` (`state` is `future`, `active` or `closed`; missing values are null).
 
 - `report flow`: `{boardId, days, done, hasMore, cycleTime: {median, p85, count}, leadTime: {median, p85, count}, throughput: [{week, done}], oldestOpen: [{key, summary, status, ageDays}]}`
   - `week` is the Monday (UTC, `YYYY-MM-DD`). `median` and `p85` are null with no data.
@@ -112,6 +124,7 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `TRANSITION_AMBIGUOUS`: pass a transition `id` from `details`.
 - `USER_NOT_FOUND`, `USER_AMBIGUOUS`: use the exact email or accountId. `details` lists the candidates.
 - `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active). On `report sprint` and `report velocity`, the board has no sprints: use `report flow` instead.
+- `SPRINT_NOT_FUTURE`, `SPRINT_NOT_ACTIVE`: only a future sprint can start and only an active one can close; run `sprint view <id>` and tell the user its state. On `sprint` commands, `NO_SPRINTS` means the board does not use sprints (a Jira project setting the user must turn on), and `JIRA_ERROR` on `sprint start` often means the board already has an active sprint.
 - `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the board's open sprints `[{id, name, state}]`. Pass one's id.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
 - `CONFIRM_REQUIRED`: see Deletes above.
