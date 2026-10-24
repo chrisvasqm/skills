@@ -61,6 +61,23 @@ Every flag has a short form (jira-cli 1.4.0 or newer; long forms stay valid and 
 
 Reports use the configured board unless `--board` is given. Cycle time runs from the first "in progress" status to the last move to done. Lead time runs from created to done. Times are in days.
 
+## Example requests
+
+How common requests map to commands (add `--json` to each):
+
+- "What's on my plate?" → `board --assignee me --sprint active`
+- "Catch me up on KAN-42." → `ticket view KAN-42 --comments 20`, then summarize the ticket, the discussion and blockers.
+- "I'm starting KAN-42." → `ticket edit KAN-42 --assignee me`, then `ticket move KAN-42` (no target) to see the moves, then move it to the in-progress status.
+- "Done with KAN-42, fixed in PR #88." → `comment add KAN-42 "…"`, then `ticket move KAN-42 Done`.
+- "File a bug for what we just found." → `ticket create --type Bug --summary "…" --description-file -` with repro steps.
+- "Split KAN-60 into sub-tasks." → one `ticket create --parent KAN-60 --type Subtask --summary "…"` per step. If the type name is rejected, tell the user the error.
+- "Give me the unassigned To Do tickets." → `board --assignee none --status "To Do"`, then `ticket edit … --assignee me` only for the ones the user picks.
+- "Put every urgent ticket in the sprint." → `board --jql 'labels = urgent'`, then `ticket edit … --sprint active` for each.
+- "Rewrite KAN-70's description." → `ticket view KAN-70` first, then `ticket edit KAN-70 --description-file -`.
+- "Delete the demo tickets." → list them, show the list, and wait for the user's OK before `ticket delete … --yes`.
+- "Write my standup." → `board --assignee me --sprint active` plus `comment list` on those tickets; write yesterday, today and blockers.
+- "How is the sprint going?" → `report sprint` and `report workload`. "Are we getting faster?" → `report velocity` and `report flow --days 90`.
+
 ## `data` shapes
 
 - `board`: `{boardId, boardType, jql, sprintIds, note, total, fetched, hasMore, columns: [{name, issues: [{key, type, summary, status, priority, assignee, updated}]}]}`
