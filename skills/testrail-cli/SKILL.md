@@ -1,6 +1,6 @@
 ---
 name: testrail-cli
-description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, and files a Jira bug for a failed test. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
+description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, files a Jira bug for a failed test, posts a run's results to its Jira tickets, and sets tests back to Retest when their Jira bugs are done. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
 ---
 
 # testrail-cli
@@ -79,6 +79,10 @@ testrail run edit R3 [--name "…"] [--description …] [--refs …] [--mileston
 #   open runs not in a plan; --add/--remove change the case list, --cases sets it exactly; removing deletes those tests' results
 testrail run create --from-jira KAN-12 [--name "…"] [--cases C1,C2] …   # name "KAN-12: <summary>", KAN-12 in refs;
 #   no --cases: only the cases whose refs include KAN-12 (NO_LINKED_CASES if none)
+testrail run sync R3 --yes [--move Done]   # one Jira comment per linked key (run refs: whole run; case refs: that case's tests);
+                                           #   --move moves a ticket whose related tests all passed (untested blocks it)
+testrail run retest R3 --yes [--status failed,blocked] [--done "Done,Closed"]   # tests whose Jira bugs (result defects)
+                                           #   are all in a --done status get a Retest result
 testrail run close R3 --yes
 testrail run delete R3 --yes   # removes its tests and results; closed runs need the "delete completed test runs" permission
 
@@ -165,6 +169,8 @@ How common requests map to commands (add `--json` to each):
 - "Plan the 2.0 release, one run per browser." → `milestone list` (or `milestone create`), `configuration list`, then `plan create --name "Release 2.0" --milestone M2 --configs Chrome,Firefox`.
 - "Has C12 been flaky?" → `case history C12 --limit 20`; summarize the statuses per run.
 - "Move these cases to the Login section." → `section list`, then `case move C1 C2 --section <id>`.
+- "Tell Jira how R3 went." → `run view R3`, then `run sync R3 --yes` (add `--move Done` only if the user asked to move tickets). It posts a comment each time it runs.
+- "Which bugs are fixed? Retest them." → `run retest R3` shows the plan when asked without `--yes` in a terminal; as an agent, describe what will happen and run `run retest R3 --yes` after the user's OK.
 - "The sprint is over. Close R3." → `run view R3`, show the counts, and wait for the user's OK before `run close R3 --yes`. Never delete a run unless the user asks for it by name.
 
 ## `data` shapes
@@ -182,6 +188,8 @@ How common requests map to commands (add `--json` to each):
 - `run view`: `{id, name, url, description, suiteId, planId, includeAll, completed, completedOn, refs, counts, created}`
 - `run create`: `{id, name, url, completed, completedOn, counts, includeAll, jira: {key, url}|null}`
 - `run close`: `{id, name, url, completed, completedOn, counts}`
+- `run sync`: `{run: {id, name, url}, move, tickets: [{key, scope: "run"|"cases", tests: {total, passed, untested, counts, notPassed: [{id, title, status}]}, commented, moved, moveSkipped, error: {code, message}|null}]}`
+- `run retest`: `{runId, retested: [{testId, caseId, title, bugs, resultId}], waiting: [{testId, caseId, title, bugs: [{key, status}]}], unlinked: [{testId, caseId, title}], errors: [{testId, caseId, title, code, message, keys}]}`
 - `run delete`: `{id, name, deleted: true}`
 - `test list`: `{runId, tests: [{id, caseId, title, status}], hasMore}`
 - `test view`: `{id, title, url, caseId, runId, status, refs, preconditions, steps, expected, stepList, results: {shown: [result], hasMore}}`
@@ -232,7 +240,9 @@ A `result` is `{id, status, comment, defects, elapsed, version, created, steps: 
 - After `--create-bug`, if the TestRail result then fails, the error message and `details.bug` name the bug that was created. Retry with `--defects <that key>`, not `--create-bug`, or you get a second bug.
 - `RUN_IN_PLAN`: the run belongs to a test plan; `link add|remove` and `run edit` cannot change it. Edit it in TestRail.
 - `LINK_NOT_REMOVABLE`: a test's links are result defects, which TestRail cannot change.
-- `CONFIRM_REQUIRED`: see the rule on deletes above.
+- `CONFIRM_REQUIRED`: see the rule on deletes above. `run sync` and `run retest` also need `--yes`: they write to Jira or add results.
+- `NO_JIRA_KEYS`: neither the run nor its cases have Jira keys in refs; link them first (`link add`).
+- `SYNC_FAILED`: Jira refused some tickets; the others were synced. `details` is the full `run sync` data; each failed ticket has its own `error`.
 - `FILE_ERROR`: a `--file` or attachment path can't be read or is not a file.
 - `FORBIDDEN`, `TESTRAIL_ERROR`: TestRail refused. Report the message, which names the bad field.
 - `NETWORK_ERROR`, `INVALID_RESPONSE`, `UNEXPECTED`: TestRail can't be reached or something broke. GETs were already retried, so tell the user.
