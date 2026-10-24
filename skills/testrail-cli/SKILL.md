@@ -128,17 +128,17 @@ testrail link add C12 KAN-1 [KAN-2 …] [--no-check]   # adds to the refs; on a 
 testrail link remove C12 KAN-1 [KAN-2 …]     # cases and runs only
 ```
 
-Every flag has a short form (long forms stay valid and read clearer). Shared everywhere: `-j` --json, `-c` --config, `-y` --yes, `-n` --limit, `-N` --name, `-d` --description (`-d` is --defects on result add), `-f` --file, `-r` --refs, `-a` --assign/--assigned, `-D` --completed, `-J` --from-jira, `-S` --suite, `-M` --milestone, `-C` --cases. Per command:
-- setup `-g` --global; project use `-S` --suite.
-- section create/move `-s` --parent; section move `-L` --after.
-- milestone create/edit `-F` --start, `-U` --due, `-M` --parent; milestone edit `-G` --started.
-- case list `-s` --section, `-q` --query, `-p` --priority, `-T` --type, `-u` --updated-since; case history `-W` --runs, `-R` --run; case copy/move `-s` --section.
-- case create/edit `-s` --section, `-t` --title, `-T` --type, `-p` --priority, `-e` --estimate, `-P` --preconds, `-S` --steps, `-E` --expected, `-a` --step (the one exception to `-a`).
-- run create `-R` --from-run, `-s` --status, `-w` --from-sprint, `-K` --from-epic; coverage `-w` --sprint, `-K` --epic, `-Q` --jql, `-W` --runs; run edit `-i` --add, `-x` --remove.
-- plan add-run/create `-g` --configs.
+Every flag has a short form, lowercase only (long forms stay valid and read clearer). One meaning per short flag; a later meaning gets two letters. Combined shorts (`-yj`) do not work. Shared everywhere: `-j` --json, `-c` --config, `-y` --yes, `-n` --limit, `-na` --name, `-d` --description, `-f` --file, `-r` --refs, `-a` --assign/--assigned, `-cp` --completed, `-fj` --from-jira, `-su` --suite, `-ml` --milestone, `-ca` --cases. Per command:
+- setup `-g` --global; project use `-su` --suite.
+- section create/move `-pa` --parent; section move `-af` --after.
+- milestone create/edit `-sd` --start, `-du` --due, `-pa` --parent; milestone edit `-sr` --started.
+- case list `-sc` --section, `-q` --query, `-p` --priority, `-ty` --type, `-u` --updated-since; case history `-rn` --runs, `-ru` --run; case copy/move `-sc` --section.
+- case create/edit `-sc` --section, `-t` --title, `-ty` --type, `-p` --priority, `-es` --estimate, `-pc` --preconds, `-sp` --steps, `-ex` --expected, `-sa` --step.
+- run create `-ru` --from-run, `-s` --status, `-w` --from-sprint, `-ep` --from-epic; coverage `-w` --sprint, `-ep` --epic, `-ql` --jql, `-rn` --runs; run edit `-i` --add, `-x` --remove; run retest `-s` --status, `-dn` --done; run sync `-mv` --move.
+- plan add-run/create `-cf` --configs.
 - test list/todo `-s` --status; test view `-n` --results.
-- result add `-s` --status, `-m` --comment, `-d` --defects, `-e` --elapsed, `-b` --build, `-O` --steps, `-A` --attach, `-R` --run, `-C` --case, `-B` --create-bug.
-- attachment add `-I` --result; link add `-N` --no-check.
+- result add `-s` --status, `-m` --comment, `-df` --defects, `-e` --elapsed, `-b` --build, `-sl` --steps, `-at` --attach, `-ru` --run, `-ca` --case, `-cb` --create-bug.
+- attachment add `-rs` --result; link add `-nc` --no-check.
 
 `--from-jira`, `--from-sprint`, `--from-epic`, `coverage` and `--create-bug` need jira-cli (`jira`; sprint, epic and coverage need a version with `ticket list`, else `JIRA_ERROR`: ask the user to update it) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
 
