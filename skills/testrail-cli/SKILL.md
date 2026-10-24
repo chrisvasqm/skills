@@ -68,7 +68,7 @@ testrail link add C12 KAN-1 [KAN-2 …] [--no-check]   # adds to the refs; on a 
 testrail link remove C12 KAN-1 [KAN-2 …]     # cases and runs only
 ```
 
-`--from-jira` and `--create-bug` need jira-cli (`jira`) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug.
+`--from-jira` and `--create-bug` need jira-cli (`jira`) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
 
 `link` needs the letter (`C12`, not `12`). Keys are upper-cased and must look like `KAN-12`; ones already linked are skipped. `link add` first checks each new key with jira-cli (`jira --json ticket view`) when `jira` is on PATH, and skips the check with a note on stderr when it is not. A test's link is a result, so it is permanent: add one only when the user asked.
 
