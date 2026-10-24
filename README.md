@@ -17,7 +17,6 @@ Or install all of them with `npx skills add chrisvasqm/skills`.
 - [cleanup](skills/cleanup/SKILL.md): review the changed code for reuse, simplification, efficiency and altitude issues, then fix them without changing behavior.
 - [jira-cli](skills/jira-cli/SKILL.md): use the [`jira`](https://github.com/chrisvasqm/jira-cli) CLI to work with Jira Cloud tickets, comments, boards and sprints.
 - [test-cli](skills/test-cli/SKILL.md): use the [`test-cli`](https://github.com/chrisvasqm/test-cli) CLI to work with TestRail cases, runs, tests and results, and link them to Jira tickets.
-- [testrail-cli](skills/testrail-cli/SKILL.md): the same guide under the old name (`testrail`), kept for older installs.
 
 ## Adding a skill
 
