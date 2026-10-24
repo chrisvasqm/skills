@@ -125,7 +125,7 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `USER_NOT_FOUND`, `USER_AMBIGUOUS`: use the exact email or accountId. `details` lists the candidates.
 - `NO_SPRINTS`, `NO_ACTIVE_SPRINT`: on `board`, use `--sprint all`; on create or edit, drop `--sprint` (the board has no sprints or none is active). On `report sprint` and `report velocity`, the board has no sprints: use `report flow` instead.
 - `SPRINT_NOT_FUTURE`, `SPRINT_NOT_ACTIVE`: only a future sprint can start and only an active one can close; run `sprint view <id>` and tell the user its state. On `sprint` commands, `NO_SPRINTS` means the board does not use sprints (a Jira project setting the user must turn on), and `JIRA_ERROR` on `sprint start` often means the board already has an active sprint.
-- `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the candidate sprints `[{id, name, state}]` (the open ones for a name; the active ones for `--sprint active`, `sprint view` or `report sprint` on a board running parallel sprints). Pass one's id; ask the user which one if it is unclear.
+- `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the candidate sprints `[{id, name, state}]` (the open ones for a name; the active ones for `--sprint active`, `sprint view` or `report sprint` on a board running parallel sprints). Pass one's id; ask the user which one if it is unclear. `board --sprint active` is different: it shows the tickets of every active sprint.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
 - `CONFIRM_REQUIRED`: see Deletes above.
 - `FILE_ERROR`: the `--file` path can't be read.
