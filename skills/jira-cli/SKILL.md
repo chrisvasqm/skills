@@ -43,7 +43,8 @@ jira board use <boardId>          # change the default board and project (writes
 jira ticket view KAN-12 [--comments <0-100>]          # fields, description, latest comments (5)
 jira ticket list [--jql "<JQL>"] [--assignee …] [--status <name>] [--type <name>] [--sprint active|<id|name>|none]
                  [--filter <id|name>] [--project KEY] [--order-by "<JQL>"] [--limit <n>]
-                                  # default: the project's not-done tickets, newest update first (50); --jql drops "not done"
+                                  # default: the project's not-done tickets, newest update first (50); --jql or --filter drops "not done"
+                                  # --jql never holds ORDER BY (USAGE); sort with --order-by
 jira filter list [--limit <n>]    # your saved filters and favourites, with their JQL
 jira ticket create --summary "..." [--type Bug] [--parent KAN-3] [--project KEY] [field flags]
 jira ticket edit KAN-12 [field flags] [--remove-label y]
@@ -124,7 +125,7 @@ How common requests map to commands (add `--json` to each):
 - "What changed on KAN-42?" → `ticket history KAN-42`. "Who is watching it?" → `watcher list KAN-42`.
 - "KAN-42 is blocked by KAN-40." → `link add KAN-42 "is blocked by" KAN-40`.
 - "Log 2 hours on KAN-42." → `worklog add KAN-42 2h`.
-- "Move KAN-50 to the top of the backlog." → `ticket list --jql 'project = KAN ORDER BY Rank'` to find the first ticket, then `ticket rank KAN-50 --before <it>`.
+- "Move KAN-50 to the top of the backlog." → `ticket list --order-by Rank --limit 1` to find the first ticket, then `ticket rank KAN-50 --before <it>`.
 - "How is the sprint going?" → `report sprint` and `report workload`. "Are we getting faster?" → `report velocity` and `report flow --days 90`.
 
 ## `data` shapes

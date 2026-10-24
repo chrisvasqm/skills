@@ -82,9 +82,9 @@ testrail run create --from-jira KAN-12 [--name "…"] [--cases C1,C2] …   # na
 testrail run create --from-sprint active|<id>|<name> [--name "…"] …   # cases linked to the sprint's tickets (done ones too);
 testrail run create --from-epic KAN-5 [--name "…"] …                 #   or to the epic's children; name = sprint name or "KAN-5: <summary>"
 #   tickets come from jira-cli's configured project and board; refs over 250 chars are trimmed (named on stderr)
-testrail coverage [--sprint active|<id>|<name> | --epic KAN-5 | --jql <q>] [--runs <n>]   # default: active sprint
+testrail coverage [--sprint active|<id>|<name> | --epic KAN-5 | --jql <q>] [--runs <n>]   # default: active sprint; no ORDER BY in --jql
 #   per ticket: linked cases and each case's latest result in the newest of the last --runs (25) runs; plan runs not read
-testrail run sync R3 --yes [--move Done]   # one Jira comment per linked key (run refs: whole run; case refs: that case's tests);
+testrail run sync R3 --yes [--move Done]   # one Jira comment per linked key (a key that cases link: their tests; a run-only ref: whole run);
                                            #   --move moves a ticket whose related tests all passed (untested blocks it)
 testrail run retest R3 --yes [--status failed,blocked] [--done "Done,Closed"]   # tests whose Jira bugs (result defects)
                                            #   are all done (Jira status category done, or a --done status name) get a Retest result
