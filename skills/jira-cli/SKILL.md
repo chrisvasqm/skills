@@ -1,6 +1,6 @@
 ---
 name: jira-cli
-description: Read and update Jira Cloud tickets from the shell with the `jira` CLI. Use it to see a board, read a ticket and its comments, create, edit, move (change status) or delete tickets, and add, edit or delete comments. Use it instead of a Jira MCP server when the user mentions Jira, a ticket key like ABC-123, a board, a sprint or a ticket's status.
+description: Read and update Jira Cloud tickets from the shell with the `jira` CLI. Use it to see a board, search tickets with JQL, read a ticket, its comments and history, create, edit, move (change status), rank or delete tickets, add, edit or delete comments, manage links, attachments, worklogs and watchers, find users, and list projects, components, versions, labels and fields. Use it instead of a Jira MCP server when the user mentions Jira, a ticket key like ABC-123, a board, a sprint or a ticket's status.
 ---
 
 # jira-cli
@@ -40,13 +40,38 @@ jira board [view <boardId>]       # tickets by column; filters: --status <column
 jira board list                   # boards; current: true marks the configured one
 jira board use <boardId>          # change the default board and project (writes the config)
 jira ticket view KAN-12 [--comments <0-100>]          # fields, description, latest comments (5)
+jira ticket list [--jql "<JQL>"] [--assignee …] [--status <name>] [--type <name>] [--sprint active|<id|name>|none]
+                 [--filter <id|name>] [--project KEY] [--order-by "<JQL>"] [--limit <n>]
+                                  # default: the project's not-done tickets, newest update first (50); --jql drops "not done"
+jira filter list [--limit <n>]    # your saved filters and favourites, with their JQL
 jira ticket create --summary "..." [--type Bug] [--parent KAN-3] [--project KEY] [field flags]
 jira ticket edit KAN-12 [field flags] [--remove-label y]
 #   field flags: --description <text> ("" clears on edit) | --description-file <path|->, --priority <name>,
 #                --assignee me|none|<email|name|accountId>, --add-label x (repeatable),
-#                --sprint active|<sprint id>|<sprint name>|none (none = backlog; sprints of the configured board)
+#                --sprint active|<sprint id>|<sprint name>|none (none = backlog; sprints of the configured board),
+#                --component "A,B" and --fix-version "1.0,1.1" (set the whole list; "" clears on edit),
+#                --estimate 1d and --remaining 3h (time tracking; w, d, h, m)
 jira ticket move KAN-12 [target]  # no target: list allowed moves; target: status, transition name or id, or column
+jira ticket rank KAN-5 KAN-6 --before KAN-2 | --after KAN-2   # backlog order; up to 50 tickets
+jira ticket history KAN-12 [--limit <n>]                # changes, newest first (20)
 jira ticket delete KAN-12 --yes [--with-subtasks]
+jira link list KAN-12             # ticket links and web links (web link ids start with w)
+jira link add KAN-12 blocks KAN-13            # type: name, outward or inward phrase ("is blocked by")
+jira link add KAN-12 https://… [--title <text>]  # web link
+jira link remove KAN-12 <id|wId> --yes
+jira link types
+jira attachment list KAN-12
+jira attachment add KAN-12 <file...>
+jira attachment get KAN-12 <id> [--output <file|dir>] [--yes]   # --yes overwrites
+jira attachment delete KAN-12 <id> --yes
+jira worklog list KAN-12 [--limit <n>]
+jira worklog add KAN-12 2h30m [--start <date>] [--description <text> | --file <path|->]
+jira worklog delete KAN-12 <id> --yes
+jira watcher list KAN-12
+jira watcher add|remove KAN-12 [me|email|name|accountId]   # default me
+jira user search <text> [--project KEY] [--limit <n>]   # --project: only people assignable there
+jira user view [me|email|name|accountId]
+jira project list | component list | version list [--project KEY] | label list | field list [text]
 jira comment list KAN-12 [--limit <n>]                # oldest first (50)
 jira comment add KAN-12 "text" | --file <path|->
 jira comment edit KAN-12 10001 "text" | --file <path|->
@@ -64,7 +89,10 @@ jira report sprint [sprintId] [--board <id>]                # done vs not done; 
 jira report velocity [--board <id>] [--sprints <n>]         # done per closed sprint (last 6)
 ```
 
-Every flag has a short form (jira-cli 1.4.0 or newer; long forms stay valid and read clearer): `-j` --json, `-c` --config, `-y` --yes, `-g` --global (setup); board view `-s` --status, `-S` --sprint, `-a` --assignee, `-q` --jql, `-o` --order-by, `-n` --limit; ticket view `-n` --comments; create/edit `-s` --summary, `-d` --description, `-f` --description-file, `-p` --priority, `-a` --assignee, `-l` --add-label, `-L` --remove-label, `-S` --sprint, `-t` --type, `-P` --parent, `-k` --project; ticket delete `-w` --with-subtasks; sprint `-b` --board, `-S` --state (list), `-N` --name, `-g` --goal, `-s` --start, `-e` --end; comment `-f` --file, `-n` --limit; reports `-b` --board, `-n` --limit, `-d` --days, `-s` --sprints.
+Every flag has a short form. Long forms stay valid and read clearer. Short flags are lowercase, one meaning each across commands; some have two letters, so never combine them (`-y -j`, not `-yj`). If a short flag is rejected, the user's `jira` is older: use the long form or ask them to update.
+
+- One letter: `-j` json, `-c` config, `-y` yes, `-g` global, `-a` assignee, `-b` board, `-d` description, `-e` end, `-f` file / description-file, `-k` project, `-l` add-label, `-n` limit / comments / sprints (velocity), `-o` order-by, `-p` priority, `-q` jql, `-s` summary, `-t` type, `-w` with-subtasks.
+- Two letters: `-st` status, `-sp` sprint, `-se` state, `-sd` start, `-pa` parent, `-rl` remove-label, `-na` name, `-go` goal, `-da` days, `-ti` title, `-fi` filter, `-ou` output, `-es` estimate, `-re` remaining, `-co` component, `-fv` fix-version, `-bf` before, `-af` after.
 
 Reports use the configured board unless `--board` is given. Cycle time runs from the first "in progress" status to the last move to done. Lead time runs from created to done. Times are in days.
 
@@ -85,6 +113,11 @@ How common requests map to commands (add `--json` to each):
 - "Write my standup." → `board --assignee me --sprint active` plus `comment list` on those tickets; write yesterday, today and blockers.
 - "Plan next sprint." → `sprint list` to see what exists, then `sprint create --name "…" --start … --end …`, and `ticket edit … --sprint <id>` for the tickets the user picks.
 - "Start the sprint." / "Close the sprint." → `sprint view` (or `sprint list`) first; `sprint start <id>`, or show the not-done tickets (`report sprint`) and wait for the user's OK before `sprint close <id> --yes`.
+- "What's open in the API component?" → `ticket list --jql 'component = API'` (add `statusCategory != Done` to hide done tickets).
+- "What changed on KAN-42?" → `ticket history KAN-42`. "Who is watching it?" → `watcher list KAN-42`.
+- "KAN-42 is blocked by KAN-40." → `link add KAN-42 "is blocked by" KAN-40`.
+- "Log 2 hours on KAN-42." → `worklog add KAN-42 2h`.
+- "Move KAN-50 to the top of the backlog." → `ticket list --jql 'project = KAN ORDER BY Rank'` to find the first ticket, then `ticket rank KAN-50 --before <it>`.
 - "How is the sprint going?" → `report sprint` and `report workload`. "Are we getting faster?" → `report velocity` and `report flow --days 90`.
 
 ## `data` shapes
@@ -102,6 +135,17 @@ How common requests map to commands (add `--json` to each):
 - `comment list`: `{key, total, comments: [comment]}`
 - `comment add` and `comment edit`: `{key, comment}`
 - Deletes: `{key, deleted: true}`, plus `id` for comments.
+- `ticket view` also has `components`, `fixVersions` (name lists) and `timeTracking: {spent, estimate, remaining}|null`.
+- `ticket list`: `{jql, fetched, hasMore, issues: [{key, type, summary, status, priority, assignee, updated}]}` (no total; raise `--limit` if `hasMore`)
+- `filter list`: `{total, filters: [{id, name, owner, favourite, jql}]}`
+- `ticket history`: `{key, total, entries: [{id, created, author: {accountId, displayName}|null, changes: [{field, from, to}]}]}`
+- `ticket rank`: `{ranked: [key], before|after: key, failed: []}`
+- `link list`: `{key, links: [{id, type, direction, phrase, key, status, summary}], webLinks: [{id: "w10000", title, url}]}`; `phrase` reads "<KEY> <phrase> <key>". `link add`: `{key, link}` or `{key, webLink}`. `link types`: `{types: [{id, name, inward, outward}]}`.
+- `attachment list` / `add`: `{key, attachments: [{id, filename, size, mimeType, author, created}]}`. `attachment get`: the attachment plus `path` (absolute).
+- `worklog list`: `{key, total, worklogs: [worklog]}`; `worklog add`: `{key, worklog}`. A `worklog` is `{id, author, started, timeSpent, timeSpentSeconds, comment}`.
+- `watcher list`: `{key, watchCount, isWatching, watchers: [{accountId, displayName}]}`. `watcher add` / `remove`: `{key, accountId, displayName, watching, changed, note}` (`changed: false` when nothing had to change).
+- `user search`: `{users: [{accountId, name, email, active}]}` (empty list when nothing matches). `user view`: `{accountId, name, email, timeZone, active}`; `email` is null when hidden.
+- `project list`: `{total, hasMore, projects: [{id, key, name, type, lead, current}]}`. `component list`: `{project, components: [{id, name, lead, description}]}`. `version list`: `{project, versions: [{id, name, released, archived, releaseDate}]}`. `label list`: `{total, hasMore, labels}`. `field list`: `{fields: [{id, name, custom, type}]}`.
 
 - `sprint list`: `{boardId, sprints: [sprint]}`. `sprint view`, `create`, `edit`, `start`, `close`: one `sprint`. `sprint delete`: `{id, deleted: true}`.
   - A `sprint` is `{id, name, state, goal, startDate, endDate, completeDate}` (`state` is `future`, `active` or `closed`; missing values are null).
@@ -127,7 +171,14 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `SPRINT_NOT_FUTURE`, `SPRINT_NOT_ACTIVE`: only a future sprint can start and only an active one can close; run `sprint view <id>` and tell the user its state. On `sprint` commands, `NO_SPRINTS` means the board does not use sprints (a Jira project setting the user must turn on), and `JIRA_ERROR` on `sprint start` often means the board already has an active sprint.
 - `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the candidate sprints `[{id, name, state}]` (the open ones for a name; the active ones for `--sprint active`, `sprint view` or `report sprint` on a board running parallel sprints). Pass one's id; ask the user which one if it is unclear. `board --sprint active` is different: it shows the tickets of every active sprint.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
-- `CONFIRM_REQUIRED`: see Deletes above.
+- `CONFIRM_REQUIRED`: see Deletes above (also `link remove`, `attachment delete`, `worklog delete`).
+- `JQL_INVALID`: Jira rejected the JQL; `details` has Jira's messages. Fix the query.
+- `FILTER_NOT_FOUND`, `FILTER_AMBIGUOUS`: `details` lists the candidate filters; pass an id.
+- `PROJECT_NOT_FOUND`, `COMPONENT_NOT_FOUND`, `VERSION_NOT_FOUND`: `details` lists the available names. Don't create components or versions; ask the user.
+- `LINK_TYPE_NOT_FOUND`: `details` lists the link types. `LINK_NOT_FOUND`, `ATTACHMENT_NOT_FOUND`, `WORKLOG_NOT_FOUND`: check the id with the matching `list`.
+- `FILE_EXISTS`: `attachment get` would overwrite a file; pick another `--output`, or pass `--yes` only if the user wants it replaced. `ATTACHMENT_TOO_LARGE`: Jira's upload limit.
+- `TIME_TRACKING_DISABLED`, `WATCHING_DISABLED`: a Jira site setting; tell the user.
+- `RANK_FAILED`: some tickets were ranked, some not; `details.failed` lists them.
 - `FILE_ERROR`: the `--file` path can't be read.
 - `FORBIDDEN`, `JIRA_ERROR`: Jira refused. Report `details` (`details.errors` names the bad fields).
 - `NETWORK_ERROR`, `INVALID_RESPONSE`, `UNEXPECTED`: Jira can't be reached or something broke. GETs were already retried, so tell the user.
