@@ -69,6 +69,8 @@ testrail link add C12 KAN-1 [KAN-2 …] [--no-check]   # adds to the refs; on a 
 testrail link remove C12 KAN-1 [KAN-2 …]     # cases and runs only
 ```
 
+Every flag has a short form (long forms stay valid and read clearer): `-j` --json, `-c` --config, `-y` --yes, `-g` --global (setup); project use `-S` --suite; section list `-n` --limit; case list `-s` --section, `-r` --refs, `-n` --limit; case create/edit `-s` --section, `-t` --title, `-J` --from-jira, `-T` --type, `-p` --priority, `-r` --refs, `-e` --estimate, `-P` --preconds, `-S` --steps, `-E` --expected, `-a` --step; run list `-D` --completed, `-n` --limit; run create `-N` --name, `-J` --from-jira, `-C` --cases, `-d` --description, `-f` --file, `-r` --refs, `-M` --milestone; test list `-s` --status, `-n` --limit; test view `-n` --results; result add `-s` --status, `-m` --comment, `-f` --file, `-d` --defects, `-e` --elapsed, `-b` --build, `-R` --run, `-C` --case, `-B` --create-bug; result import `-f` --file; link add `-N` --no-check.
+
 `--from-jira` and `--create-bug` need jira-cli (`jira`) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
 
 `link` needs the letter (`C12`, not `12`). Keys are upper-cased and must look like `KAN-12`; ones already linked are skipped. `link add` first checks each new key with jira-cli (`jira --json ticket view`) when `jira` is on PATH, and skips the check with a note on stderr when it is not. A test's link is a result, so it is permanent: add one only when the user asked.
@@ -85,6 +87,21 @@ Status, type and priority names match TestRail's labels, ignoring case (`failed`
 ```
 
 All entries are added in one request, so either all land or none do.
+
+## Example requests
+
+How common requests map to commands (add `--json` to each):
+
+- "Write test cases for KAN-12." → `jira ticket view KAN-12` and `section list`, ask which section if it is unclear, then one `case create --section <id> --title "…" --refs KAN-12 --step "action::expected" …` per scenario (happy path, errors, edge cases from the acceptance criteria). `--from-jira KAN-12` fits when one case named after the ticket is enough.
+- "Start a test run for KAN-12." → `run create --from-jira KAN-12`. On `NO_LINKED_CASES`, offer to write the cases first.
+- "What failed in R3, and why?" → `test list R3 --status failed,retest`, then `test view T… --results 3` for each; summarize the comments and defects.
+- "T45 fails: the login page returns a 500. Mark it failed and file a bug." → `test view T45` first, then `result add T45 --status failed --comment "…" --create-bug`.
+- "Mark C12 passed in R3." → `result add --run R3 --case C12 --status passed`.
+- "CI finished. Report results.json to R3." → check the file's shape, then `result import R3 --file results.json`.
+- "Which cases cover KAN-12? Is anything missing?" → `case list --refs KAN-12` and `case view` on each, next to `jira ticket view KAN-12`; list the acceptance criteria no case covers, and offer to create them.
+- "Link KAN-14 to C12." → `link add C12 KAN-14`. On a test (T…) the link is a permanent result, so confirm first.
+- "How is R3 going?" → `run view R3`; report the counts per status and what is left untested.
+- "The sprint is over. Close R3." → `run view R3`, show the counts, and wait for the user's OK before `run close R3 --yes`. Never delete a run unless the user asks for it by name.
 
 ## `data` shapes
 
