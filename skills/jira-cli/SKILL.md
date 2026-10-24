@@ -1,6 +1,6 @@
 ---
 name: jira-cli
-description: Read and update Jira Cloud tickets from the shell with the `jira` CLI. Use it to see a board, search tickets with JQL, read a ticket, its comments and history, create, edit, move (change status), rank or delete tickets, add, edit or delete comments, manage links, attachments, worklogs and watchers, find users, and list projects, components, versions, labels and fields. Use it instead of a Jira MCP server when the user mentions Jira, a ticket key like ABC-123, a board, a sprint or a ticket's status.
+description: Read and update Jira Cloud tickets from the shell with the `jira` CLI. Use it to see a board, search tickets with JQL, read a ticket, its comments and history, create, edit, move (change status), rank or delete tickets (edit and move several at once), list epics with their progress, add, edit or delete comments, manage links, attachments, worklogs and watchers, find users, and list projects, components, versions, labels and fields. Use it instead of a Jira MCP server when the user mentions Jira, a ticket key like ABC-123, a board, a sprint or a ticket's status.
 ---
 
 # jira-cli
@@ -24,6 +24,7 @@ description: Read and update Jira Cloud tickets from the shell with the `jira` C
   - Exit codes: `0` ok, `2` usage or input error, `130` Ctrl+C, `1` everything else.
 - **Read before you write.** Run `ticket view` first, and change only what the user asked for. `ticket edit` changes only the flags you pass.
 - **Deletes** fail with `CONFIRM_REQUIRED` unless you pass `--yes`. Pass it only when the user asked for the delete.
+- **Several tickets at once** (`ticket edit` / `ticket move` with a key list or `--jql`) also need `--yes`. First run `ticket list --jql` with the same query, show the user the tickets, and pass `--yes` only after they agree.
 - **Text for comments and descriptions:**
   - A blank line starts a new paragraph.
   - A single newline is a line break.
@@ -52,6 +53,11 @@ jira ticket edit KAN-12 [field flags] [--remove-label y]
 #                --component "A,B" and --fix-version "1.0,1.1" (set the whole list; "" clears on edit),
 #                --estimate 1d and --remaining 3h (time tracking; w, d, h, m)
 jira ticket move KAN-12 [target]  # no target: list allowed moves; target: status, transition name or id, or column
+jira ticket edit KAN-1,KAN-2 [field flags] [--yes]      # several tickets: comma list, or --jql <q> [--limit <n>] instead of keys
+jira ticket move KAN-1,KAN-2 <target> [--yes]          # or: ticket move --jql <q> <target>; target required
+#   several tickets ask first (CONFIRM_REQUIRED without --yes); --jql is ANDed with the project, max --limit (50, up to 200)
+jira epic list [--project KEY] [--status <name>] [--limit <n>]   # not-done epics (--status drops that) with child progress
+jira epic view KAN-5 [--limit <n>]                     # epic + child tickets, progress done/total
 jira ticket rank KAN-5 KAN-6 --before KAN-2 | --after KAN-2   # backlog order; up to 50 tickets
 jira ticket history KAN-12 [--limit <n>]                # changes, newest first (20)
 jira ticket delete KAN-12 --yes [--with-subtasks]
@@ -107,7 +113,8 @@ How common requests map to commands (add `--json` to each):
 - "File a bug for what we just found." → `ticket create --type Bug --summary "…" --description-file -` with repro steps.
 - "Split KAN-60 into sub-tasks." → one `ticket create --parent KAN-60 --type Subtask --summary "…"` per step. If the type name is rejected, tell the user the error.
 - "Give me the unassigned To Do tickets." → `board --assignee none --status "To Do"`, then `ticket edit … --assignee me` only for the ones the user picks.
-- "Put every urgent ticket in the sprint." → `board --jql 'labels = urgent'`, then `ticket edit … --sprint active` for each.
+- "Put every urgent ticket in the sprint." → `ticket list --jql 'labels = urgent'`, show the list, then on the user's OK `ticket edit --jql 'labels = urgent' --sprint active --yes`.
+- "How far along is the login epic?" → `epic list` to find it, then `epic view KAN-5` and report `progress` and the open children.
 - "Rewrite KAN-70's description." → `ticket view KAN-70` first, then `ticket edit KAN-70 --description-file -`.
 - "Delete the demo tickets." → list them, show the list, and wait for the user's OK before `ticket delete … --yes`.
 - "Write my standup." → `board --assignee me --sprint active` plus `comment list` on those tickets; write yesterday, today and blockers.
@@ -129,9 +136,13 @@ How common requests map to commands (add `--json` to each):
 - `board use`: `{boardId, name, projectKey, config}`
 - `ticket view`: `{key, url, type, status, summary, priority, assignee, reporter, labels, parent: {key, summary}|null, sprint: {id, name, state}|null, created, updated, description, comments: {total, shown: [comment]}}`
   - `comments.total` is null with `--comments 0`.
+  - Ticket lists and `ticket view` also have `statusCategory`: `new`, `indeterminate` (in progress) or `done` (null if unknown). Prefer it over status names to tell done from not done.
 - `ticket create`: `{key, id, url, sprint: {id, name}|null}`
 - `ticket edit`: `{key, url, changed}`
 - `ticket move`: `{key, transitions: [{id, name, to}]}` with no target; `{key, status, transition}` with one.
+- Several tickets (`ticket edit` / `ticket move`): `{updated: [one-ticket data], failed: [{key, code, message}]}`. Some failed: `ok: true` but exit 1. A failed ticket may have part of the change applied; `ticket view` it.
+- `epic list`: `{jql, fetched, hasMore, epics: [{key, summary, status, statusCategory, assignee, updated, progress: {done, total}|null}]}` (`progress` null when the epics have more than 1000 children together).
+- `epic view`: `{key, summary, status, statusCategory, assignee, url, progress: {done, total}|null, hasMore, children: [{key, type, summary, status, statusCategory, assignee}]}`
 - `comment list`: `{key, total, comments: [comment]}`
 - `comment add` and `comment edit`: `{key, comment}`
 - Deletes: `{key, deleted: true}`, plus `id` for comments.
@@ -171,7 +182,7 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `SPRINT_NOT_FUTURE`, `SPRINT_NOT_ACTIVE`: only a future sprint can start and only an active one can close; run `sprint view <id>` and tell the user its state. On `sprint` commands, `NO_SPRINTS` means the board does not use sprints (a Jira project setting the user must turn on), and `JIRA_ERROR` on `sprint start` often means the board already has an active sprint.
 - `SPRINT_NOT_FOUND`, `SPRINT_AMBIGUOUS`: `details` lists the candidate sprints `[{id, name, state}]` (the open ones for a name; the active ones for `--sprint active`, `sprint view` or `report sprint` on a board running parallel sprints). Pass one's id; ask the user which one if it is unclear. `board --sprint active` is different: it shows the tickets of every active sprint.
 - A create error that says "Created KEY, but…" means the ticket exists (`details.key`). Don't create it again; fix the cause and run `ticket edit KEY --sprint …`.
-- `CONFIRM_REQUIRED`: see Deletes above (also `link remove`, `attachment delete`, `worklog delete`).
+- `CONFIRM_REQUIRED`: see Deletes and Several tickets above (also `link remove`, `attachment delete`, `worklog delete`).
 - `JQL_INVALID`: Jira rejected the JQL; `details` has Jira's messages. Fix the query.
 - `FILTER_NOT_FOUND`, `FILTER_AMBIGUOUS`: `details` lists the candidate filters; pass an id.
 - `PROJECT_NOT_FOUND`, `COMPONENT_NOT_FOUND`, `VERSION_NOT_FOUND`: `details` lists the available names. Don't create components or versions; ask the user.
@@ -179,6 +190,8 @@ A `comment` is `{id, author, created, updated, body}`. People are display names,
 - `FILE_EXISTS`: `attachment get` would overwrite a file; pick another `--output`, or pass `--yes` only if the user wants it replaced. `ATTACHMENT_TOO_LARGE`: Jira's upload limit.
 - `TIME_TRACKING_DISABLED`, `WATCHING_DISABLED`: a Jira site setting; tell the user.
 - `RANK_FAILED`: some tickets were ranked, some not; `details.failed` lists them.
+- `BULK_FAILED`: every ticket in a multi-ticket edit or move failed; `details.failed` has each code. `TOO_MANY_TICKETS`: `--jql` matched more than `--limit`; narrow the query, or raise `--limit` only if the user wants all of them. `NO_TICKETS`: `--jql` matched nothing.
+- `EPIC_NOT_FOUND`: check the key. `NOT_AN_EPIC`: the ticket exists but is not an epic (`details.type`); use `ticket view`.
 - `FILE_ERROR`: the `--file` path can't be read.
 - `FORBIDDEN`, `JIRA_ERROR`: Jira refused. Report `details` (`details.errors` names the bad fields).
 - `NETWORK_ERROR`, `INVALID_RESPONSE`, `UNEXPECTED`: Jira can't be reached or something broke. GETs were already retried, so tell the user.
