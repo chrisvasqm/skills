@@ -1,6 +1,6 @@
 ---
 name: testrail-cli
-description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, files a Jira bug for a failed test, posts a run's results to its Jira tickets, and sets tests back to Retest when their Jira bugs are done. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
+description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, files a Jira bug for a failed test, creates runs from a Jira sprint or epic, reports test coverage of a sprint, epic or JQL search, posts a run's results to its Jira tickets, and sets tests back to Retest when their Jira bugs are done. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
 ---
 
 # testrail-cli
@@ -79,10 +79,15 @@ testrail run edit R3 [--name "…"] [--description …] [--refs …] [--mileston
 #   open runs not in a plan; --add/--remove change the case list, --cases sets it exactly; removing deletes those tests' results
 testrail run create --from-jira KAN-12 [--name "…"] [--cases C1,C2] …   # name "KAN-12: <summary>", KAN-12 in refs;
 #   no --cases: only the cases whose refs include KAN-12 (NO_LINKED_CASES if none)
+testrail run create --from-sprint active|<id>|<name> [--name "…"] …   # cases linked to the sprint's tickets (done ones too);
+testrail run create --from-epic KAN-5 [--name "…"] …                 #   or to the epic's children; name = sprint name or "KAN-5: <summary>"
+#   tickets come from jira-cli's configured project and board; refs over 250 chars are trimmed (named on stderr)
+testrail coverage [--sprint active|<id>|<name> | --epic KAN-5 | --jql <q>] [--runs <n>]   # default: active sprint
+#   per ticket: linked cases and each case's latest result in the newest of the last --runs (25) runs; plan runs not read
 testrail run sync R3 --yes [--move Done]   # one Jira comment per linked key (run refs: whole run; case refs: that case's tests);
                                            #   --move moves a ticket whose related tests all passed (untested blocks it)
 testrail run retest R3 --yes [--status failed,blocked] [--done "Done,Closed"]   # tests whose Jira bugs (result defects)
-                                           #   are all in a --done status get a Retest result
+                                           #   are all done (Jira status category done, or a --done status name) get a Retest result
 testrail run close R3 --yes
 testrail run delete R3 --yes   # removes its tests and results; closed runs need the "delete completed test runs" permission
 
@@ -124,13 +129,13 @@ Every flag has a short form (long forms stay valid and read clearer). Shared eve
 - milestone create `-F` --start, `-U` --due, `-M` --parent.
 - case list `-s` --section, `-q` --query, `-p` --priority, `-T` --type, `-u` --updated-since; case history `-W` --runs, `-R` --run; case copy/move `-s` --section.
 - case create/edit `-s` --section, `-t` --title, `-T` --type, `-p` --priority, `-e` --estimate, `-P` --preconds, `-S` --steps, `-E` --expected, `-a` --step (the one exception to `-a`).
-- run create `-R` --from-run, `-s` --status; run edit `-i` --add, `-x` --remove.
+- run create `-R` --from-run, `-s` --status, `-w` --from-sprint, `-K` --from-epic; coverage `-w` --sprint, `-K` --epic, `-Q` --jql, `-W` --runs; run edit `-i` --add, `-x` --remove.
 - plan add-run/create `-g` --configs.
 - test list `-s` --status; test view `-n` --results.
 - result add `-s` --status, `-m` --comment, `-d` --defects, `-e` --elapsed, `-b` --build, `-O` --steps, `-A` --attach, `-R` --run, `-C` --case, `-B` --create-bug.
 - attachment add `-I` --result; link add `-N` --no-check.
 
-`--from-jira` and `--create-bug` need jira-cli (`jira`) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
+`--from-jira`, `--from-sprint`, `--from-epic`, `coverage` and `--create-bug` need jira-cli (`jira`; sprint, epic and coverage need a version with `ticket list`, else `JIRA_ERROR`: ask the user to update it) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
 
 `link` needs the letter (`C12`, not `12`). Keys are upper-cased and must look like `KAN-12`; ones already linked are skipped. `link add` first checks each new key with jira-cli (`jira --json ticket view`) when `jira` is on PATH, and skips the check with a note on stderr when it is not. A test's link is a result, so it is permanent: add one only when the user asked.
 
@@ -156,6 +161,8 @@ How common requests map to commands (add `--json` to each):
 
 - "Write test cases for KAN-12." → `jira ticket view KAN-12` and `section list`, ask which section if it is unclear, then one `case create --section <id> --title "…" --refs KAN-12 --step "action::expected" …` per scenario (happy path, errors, edge cases from the acceptance criteria). `--from-jira KAN-12` fits when one case named after the ticket is enough.
 - "Start a test run for KAN-12." → `run create --from-jira KAN-12`. On `NO_LINKED_CASES`, offer to write the cases first.
+- "Make a run for this sprint." → `run create --from-sprint active`; for an epic, `run create --from-epic KAN-5`. `tickets.unlinked` in the result lists tickets with no cases.
+- "Which tickets in the sprint have no tests?" → `coverage` (or `--epic KAN-5` / `--jql …`), then report the uncovered tickets and failed cases.
 - "What failed in R3, and why?" → `test list R3 --status failed,retest`, then `test view T… --results 3` for each; summarize the comments and defects.
 - "T45 fails: the login page returns a 500. Mark it failed and file a bug." → `test view T45` first, then `result add T45 --status failed --comment "…" --create-bug`.
 - "Mark C12 passed in R3." → `result add --run R3 --case C12 --status passed`.
@@ -188,6 +195,8 @@ How common requests map to commands (add `--json` to each):
 - `run view`: `{id, name, url, description, suiteId, planId, includeAll, completed, completedOn, refs, counts, created}`
 - `run create`: `{id, name, url, completed, completedOn, counts, includeAll, jira: {key, url}|null}`
 - `run close`: `{id, name, url, completed, completedOn, counts}`
+- `run create --from-sprint|--from-epic` adds `tickets: {from: "sprint"|"epic", name, linked: [keys], unlinked: [keys]}` (null otherwise).
+- `coverage`: `{source: {from, name, jql}, tickets: [{key, summary, status, cases: [{id, title, latest: {status, runId, testId}|null}]}], summary: {tickets, covered, uncovered, cases, passed, failed, untested, other}, runsScanned, moreRuns}` (`latest` null = untested in the scanned runs; each case counted once)
 - `run sync`: `{run: {id, name, url}, move, tickets: [{key, scope: "run"|"cases", tests: {total, passed, untested, counts, notPassed: [{id, title, status}]}, commented, moved, moveSkipped, error: {code, message}|null}]}`
 - `run retest`: `{runId, retested: [{testId, caseId, title, bugs, resultId}], waiting: [{testId, caseId, title, bugs: [{key, status}]}], unlinked: [{testId, caseId, title}], errors: [{testId, caseId, title, code, message, keys}]}`
 - `run delete`: `{id, name, deleted: true}`
@@ -235,7 +244,8 @@ A `result` is `{id, status, comment, defects, elapsed, version, created, steps: 
 - `JIRA_CHECK_FAILED`: jira-cli is installed but failed (e.g. no `.jira-cli.json`); `details` is its error. Nothing was linked. In a terminal the CLI offers `jira setup`; without one, ask the user to run `jira setup` themselves (it asks for secrets), or pass `--no-check` if they say so.
 - `JIRA_CLI_MISSING`: `--from-jira` and `--create-bug` need jira-cli. Tell the user; don't install it yourself.
 - `JIRA_ERROR`: jira-cli refused (`details` is its error, e.g. `CONFIG_MISSING`; ask the user to run `jira setup` for setup errors), or answered in an unexpected shape (`details.code` is `INVALID_RESPONSE`, with `details.issues`). Nothing was created in TestRail. For `--create-bug`, an `INVALID_RESPONSE` or a timeout means the bug may exist in Jira: check there before retrying.
-- `NO_LINKED_CASES`: no case has that key in its refs. Link cases first (`link add`) or pass `--cases`.
+- `NO_LINKED_CASES`: no case has that key in its refs (or no ticket of the sprint/epic has a linked case, or it has no tickets). Link cases first (`link add`) or pass `--cases`.
+- `SPRINT_NOT_FOUND`: no sprint with that id or name on jira-cli's board; run `jira sprint list --state all`. `NO_ACTIVE_SPRINT`: the board has no active sprint; pass a sprint id. A `USAGE` saying "give the sprint id" means several sprints share that name.
 - `RUN_CLOSED`: the run is closed, so TestRail refuses the change (`run edit`, `link add|remove R…`, `link add T…` for a test in it). `--create-bug` checks first that the run is open and (with `--run --case`) that the case is in it (`CASE_NOT_IN_RUN`), so no bug is filed for a result TestRail would refuse.
 - After `--create-bug`, if the TestRail result then fails, the error message and `details.bug` name the bug that was created. Retry with `--defects <that key>`, not `--create-bug`, or you get a second bug.
 - `RUN_IN_PLAN`: the run belongs to a test plan; `link add|remove` and `run edit` cannot change it. Edit it in TestRail.
