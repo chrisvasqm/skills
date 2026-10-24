@@ -256,7 +256,7 @@ A `result` is `{id, status, comment, defects, elapsed, version, created, steps: 
 - `SPRINT_NOT_FOUND`: no sprint with that id or name on jira-cli's board; run `jira sprint list --state all`. `NO_ACTIVE_SPRINT`: the board has no active sprint; pass a sprint id. A `USAGE` saying "give the sprint id" means several sprints share that name.
 - `RUN_CLOSED`: the run is closed, so TestRail refuses the change (`run edit`, `link add|remove R…`, `link add T…` for a test in it). `--create-bug` checks first that the run is open and (with `--run --case`) that the case is in it (`CASE_NOT_IN_RUN`), so no bug is filed for a result TestRail would refuse.
 - After `--create-bug`, if the TestRail result then fails, the error message and `details.bug` name the bug that was created. Retry with `--defects <that key>`, not `--create-bug`, or you get a second bug.
-- `RUN_IN_PLAN`: the run belongs to a test plan; `link add|remove` and `run edit` cannot change it. Edit it in TestRail.
+- `RUN_IN_PLAN`: the run belongs to a test plan, and TestRail does not allow this change to it. `run edit` and `link add|remove` work on plan runs, but not `run edit --milestone` (the plan sets the milestone), `run edit --name` on a run with sibling configuration runs, or `run close` (exit 2, before any confirmation). Close the plan with `plan close R<plan>` instead.
 - `LINK_NOT_REMOVABLE`: a test's links are result defects, which TestRail cannot change.
 - `CONFIRM_REQUIRED`: see the rule on deletes above. `run sync` and `run retest` also need `--yes`: they write to Jira or add results.
 - `NO_JIRA_KEYS`: neither the run nor its cases have Jira keys in refs; link them first (`link add`).
