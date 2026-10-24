@@ -36,6 +36,7 @@ description: Read and update TestRail from the shell with the `testrail` CLI. Us
 ```sh
 testrail project list                        # active projects; current: true marks the configured one
 testrail project use P2 [--suite S3]         # change the default project (writes the config)
+testrail project view [P2] [--limit <n>]     # overview: open runs and plans with progress, totals, open milestones (25 each; all suites)
 testrail user list                           # users with access; me: true marks you
 
 testrail suite list | view S1                # suites; current: true marks the configured one
@@ -52,6 +53,9 @@ testrail section delete <id> --yes           # with its child sections and all t
 testrail milestone list [--completed] [--limit <n>]   # open milestones (25)
 testrail milestone view M2
 testrail milestone create --name "…" [--start 2026-11-01] [--due 2026-11-30] [--parent M1] [--refs KAN-1] [--description …]
+testrail milestone edit M2 [--name …] [--description …] [--start <date> | --started] [--due <date>] [--parent M1] [--refs …]   # fields left out stay
+testrail milestone close|reopen M2
+testrail milestone delete M2 --yes           # its sub-milestones stay, without a parent
 
 testrail case list [--section <id>] [--refs KAN-12] [--query <text>] [--priority High,Medium] [--type <names>] [--updated-since 2026-10-01] [--limit <n>]
 #   cases in the configured project/suite (50); --refs: only cases linked to that key; --query: title text;
@@ -101,6 +105,7 @@ testrail plan delete R7 --yes   # with its runs, tests and results
 testrail configuration list                  # configuration groups (e.g. Browsers) and their ids
 
 testrail test list R3 [--status failed,retest] [--assigned me] [--limit <n>]   # tests in a run (100)
+testrail test todo [--assigned me] [--status …] [--milestone M2] [--limit <n>]  # tests assigned to you in every open run and plan; default: not-final statuses (Untested, Retest) (100)
 testrail test view T45 [--results <0-100>]   # status, steps, latest results (5)
 
 testrail result add T45 --status failed [--comment <text> | --file <path|->] [--defects KAN-2] [--elapsed "1m 30s"] [--build 1.2.0] [--assign me]
@@ -126,12 +131,12 @@ testrail link remove C12 KAN-1 [KAN-2 …]     # cases and runs only
 Every flag has a short form (long forms stay valid and read clearer). Shared everywhere: `-j` --json, `-c` --config, `-y` --yes, `-n` --limit, `-N` --name, `-d` --description (`-d` is --defects on result add), `-f` --file, `-r` --refs, `-a` --assign/--assigned, `-D` --completed, `-J` --from-jira, `-S` --suite, `-M` --milestone, `-C` --cases. Per command:
 - setup `-g` --global; project use `-S` --suite.
 - section create/move `-s` --parent; section move `-L` --after.
-- milestone create `-F` --start, `-U` --due, `-M` --parent.
+- milestone create/edit `-F` --start, `-U` --due, `-M` --parent; milestone edit `-G` --started.
 - case list `-s` --section, `-q` --query, `-p` --priority, `-T` --type, `-u` --updated-since; case history `-W` --runs, `-R` --run; case copy/move `-s` --section.
 - case create/edit `-s` --section, `-t` --title, `-T` --type, `-p` --priority, `-e` --estimate, `-P` --preconds, `-S` --steps, `-E` --expected, `-a` --step (the one exception to `-a`).
 - run create `-R` --from-run, `-s` --status, `-w` --from-sprint, `-K` --from-epic; coverage `-w` --sprint, `-K` --epic, `-Q` --jql, `-W` --runs; run edit `-i` --add, `-x` --remove.
 - plan add-run/create `-g` --configs.
-- test list `-s` --status; test view `-n` --results.
+- test list/todo `-s` --status; test view `-n` --results.
 - result add `-s` --status, `-m` --comment, `-d` --defects, `-e` --elapsed, `-b` --build, `-O` --steps, `-A` --attach, `-R` --run, `-C` --case, `-B` --create-bug.
 - attachment add `-I` --result; link add `-N` --no-check.
 
@@ -172,7 +177,8 @@ How common requests map to commands (add `--json` to each):
 - "How is R3 going?" → `run view R3`; report the counts per status and what is left untested.
 - "Rerun what failed in R3." → `run create --from-run R3` (add `--assign me` if asked). On `NO_MATCHING_TESTS`, nothing failed.
 - "T45 failed at step 2; attach the screenshot." → `test view T45` (step numbers), then `result add T45 --status failed --steps 1:passed,2:failed --attach shot.png`.
-- "What's assigned to me in R3?" → `test list R3 --assigned me`.
+- "What's assigned to me in R3?" → `test list R3 --assigned me`. "What's on my plate?" → `test todo`.
+- "How is the project doing?" → `project view`.
 - "Plan the 2.0 release, one run per browser." → `milestone list` (or `milestone create`), `configuration list`, then `plan create --name "Release 2.0" --milestone M2 --configs Chrome,Firefox`.
 - "Has C12 been flaky?" → `case history C12 --limit 20`; summarize the statuses per run.
 - "Move these cases to the Login section." → `section list`, then `case move C1 C2 --section <id>`.
@@ -184,6 +190,7 @@ How common requests map to commands (add `--json` to each):
 
 - `project list`: `{projects: [{id, name, multiSuite, current, url}], hasMore}`
 - `project use`: `{path, project: {id, name}, suite: {id, name}|null}`
+- `project view`: `{project: {id, name, multiSuite, current, announcement, showAnnouncement, url}, totals: {runs, plans, counts, total, passed, passRate}, runs: [{id, name, url, completed, completedOn, counts, total, passed, passRate, milestoneId, created}], plans: [same fields], milestones: [{id, name, parentId, due, overdue, started, url}], hasMore: {runs, plans, milestones}}`; `passRate` is a whole percent of all tests (null with none); runs inside plans count in their plan
 - `section list`: `{sections: [{id, name, parentId, depth}], hasMore}`
 - `case list`: `{cases: [{id, title, sectionId, priority, type, refs, updated}], hasMore}`
 - `case view`: `{id, title, url, section: {id, name}, suiteId, priority, type, refs, estimate, created, updated, preconditions, steps, expected, stepList: [{content, expected}]}`
@@ -201,6 +208,7 @@ How common requests map to commands (add `--json` to each):
 - `run retest`: `{runId, retested: [{testId, caseId, title, bugs, resultId}], waiting: [{testId, caseId, title, bugs: [{key, status}]}], unlinked: [{testId, caseId, title}], errors: [{testId, caseId, title, code, message, keys}]}`
 - `run delete`: `{id, name, deleted: true}`
 - `test list`: `{runId, tests: [{id, caseId, title, status}], hasMore}`
+- `test todo`: `{user: {id, name}, tests: [{id, caseId, title, status, runId, runName, planId, planName, config}], hasMore}`, newest run first; plan fields and `config` are null outside plans
 - `test view`: `{id, title, url, caseId, runId, status, refs, preconditions, steps, expected, stepList, results: {shown: [result], hasMore}}`
 - `result add`: a result plus `{testId, bug: {key, url}|null, url}`
 - `result import`: `{runId, added: [{id, testId, caseId, status}]}`
@@ -210,7 +218,7 @@ How common requests map to commands (add `--json` to each):
 - `user list`: `{users: [{id, name, email, active, me}], hasMore}`
 - `suite list`: `{suites: [{id, name, completed, current, url}]}`; `suite view`: `{id, name, description, projectId, completed, current, url}`; `suite create`: `{id, name, url}`; `suite edit`: `{id, name, changed, url}`; `suite delete`: `{id, name, deleted: true}`
 - `section create|edit|move`: `{id, name, description, parentId, depth}`; `section delete`: `{id, name, deleted: true}`
-- `milestone list`: `{milestones: [{id, name, parentId, due, completed, url}], hasMore}`; `milestone view|create`: `{id, name, url, description, parentId, refs, start, due, started, completed, completedOn}`
+- `milestone list`: `{milestones: [{id, name, parentId, due, completed, url}], hasMore}`; `milestone view|create|close|reopen`: `{id, name, url, description, parentId, refs, start, due, started, completed, completedOn}`; `milestone edit`: that plus `changed: [TestRail field names]`; `milestone delete`: `{id, name, deleted: true}`
 - `case history`: `{case: {id, title}, runsScanned, moreRuns, results: [result + {run: {id, name}, testId, author: {id, name|null}}], hasMore}`
 - `case edit` (several cases): `{cases: [{id, title, url}], changed}`
 - `case copy|move`: `{cases: [{id, title}], sectionId, section, suiteId}`
