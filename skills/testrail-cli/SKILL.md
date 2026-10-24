@@ -140,7 +140,7 @@ Every flag has a short form, lowercase only (long forms stay valid and read clea
 - result add `-s` --status, `-m` --comment, `-df` --defects, `-e` --elapsed, `-b` --build, `-sl` --steps, `-at` --attach, `-ru` --run, `-ca` --case, `-cb` --create-bug.
 - attachment add `-rs` --result; link add `-nc` --no-check.
 
-`--from-jira`, `--from-sprint`, `--from-epic`, `coverage` and `--create-bug` need jira-cli (`jira`; sprint, epic and coverage need a version with `ticket list`, else `JIRA_ERROR`: ask the user to update it) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` creates a real Jira ticket ("T45 failed: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
+`--from-jira`, `--from-sprint`, `--from-epic`, `coverage` and `--create-bug` need jira-cli (`jira`; sprint, epic and coverage need a version with `ticket list`, else `JIRA_ERROR`: ask the user to update it) with its own config; without it they fail with `JIRA_CLI_MISSING`. `--create-bug` works only with `--status failed` or `--status blocked` (else `USAGE`, exit 2, nothing created). It creates a real Jira ticket ("T45 failed: <title>" or "T45 blocked: <title>", described by the comment plus a link to the test) in jira-cli's configured project, so use it only when the user asked for a bug. It is a Bug, or a Task when that project has no Bug issue type (a note on stderr says so).
 
 `link` needs the letter (`C12`, not `12`). Keys are upper-cased and must look like `KAN-12`; ones already linked are skipped. `link add` first checks each new key with jira-cli (`jira --json ticket view`) when `jira` is on PATH, and skips the check with a note on stderr when it is not. A test's link is a result, so it is permanent: add one only when the user asked.
 
@@ -238,7 +238,7 @@ A `result` is `{id, status, comment, defects, elapsed, version, created, steps: 
 - `USAGE`: fix the command (see `testrail <cmd> --help`). Don't retry it unchanged.
 - `CONFIG_MISSING`, `CONFIG_INVALID`, `AUTH_FAILED`, `NO_PROJECTS`: ask the user to run `testrail setup`. Repeated `AUTH_FAILED` can lock the TestRail account, so don't retry it.
 - `CASE_NOT_FOUND`, `RUN_NOT_FOUND`, `TEST_NOT_FOUND`, `SECTION_NOT_FOUND`, `PROJECT_NOT_FOUND`, `PLAN_NOT_FOUND`, `MILESTONE_NOT_FOUND`, `RESULT_NOT_FOUND`, `REPORT_NOT_FOUND`, `USER_NOT_FOUND`: check the id (or the email). A plain `NOT_FOUND` can also mean the config points at the wrong site.
-- `CASE_NOT_IN_RUN`: the case exists but is not part of that run. Check with `test list R3`. A case id that does not exist at all is `CASE_NOT_FOUND`.
+- `CASE_NOT_IN_RUN` (exit 2): the case exists but is not part of that run. Check with `test list R3`. A case id that does not exist at all is `CASE_NOT_FOUND`.
 - `UNKNOWN_STATUS`, `UNKNOWN_PRIORITY`, `UNKNOWN_TYPE`: `details` lists the valid names. Pick one.
 - `SUITE_REQUIRED`, `SUITE_NOT_FOUND`, `NO_SUITES`: `details` lists the project's suites (`S<id>  name`). Pass one with `--suite`.
 - `NO_STEPS_TEMPLATE`: the project has no steps template; use `--steps` and `--expected`.
