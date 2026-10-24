@@ -1,6 +1,6 @@
 ---
 name: testrail-cli
-description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs and tests, report results (one or many at once, e.g. from CI), create or close runs, and create, edit or delete cases. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, and files a Jira bug for a failed test. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run like R3, a test like T45, reporting test results, or test cases for a Jira ticket like KAN-12.
+description: Read and update TestRail from the shell with the `testrail` CLI. Use it to list or read test cases, runs and tests, report results (one or many at once, e.g. from CI), create, close or delete runs, and create, edit or delete cases. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, and files a Jira bug for a failed test. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run like R3, a test like T45, reporting test results, or test cases for a Jira ticket like KAN-12.
 ---
 
 # testrail-cli
@@ -26,7 +26,7 @@ description: Read and update TestRail from the shell with the `testrail` CLI. Us
 - **Ids carry a letter:** C (case), R (run), T (test = one case inside one run), P (project), S (suite). `C12`, `c12` and `12` all work where a case is expected. Sections are plain numbers.
 - **Read before you write.** Run `case view` or `test view` first, and change only what the user asked for. `case edit` changes only the flags you pass.
 - **Results are append-only.** TestRail cannot edit or delete a result, so add one only when the user asked. `Untested` cannot be set as a result.
-- **Deletes and closing a run** fail with `CONFIRM_REQUIRED` unless you pass `--yes`. Pass it only when the user asked. Neither can be undone.
+- **Deletes and closing a run** fail with `CONFIRM_REQUIRED` unless you pass `--yes`. Pass it only when the user asked. Neither can be undone. Prefer closing a run to deleting it: a deleted run loses its tests and results, which are the test evidence.
 - **Long text:** comments and descriptions take `--file <path>` (`-` reads stdin). Text is Markdown.
 - **Writes are not retried on timeouts.** A `NETWORK_ERROR` on a write says the change may or may not be saved: read first (`test view`, `run list`), then retry.
 
@@ -54,6 +54,7 @@ testrail run create --name "…" [--cases C1,C2] [--description <text> | --file 
 testrail run create --from-jira KAN-12 [--name "…"] [--cases C1,C2] …   # name "KAN-12: <summary>", KAN-12 in refs;
 #   no --cases: only the cases whose refs include KAN-12 (NO_LINKED_CASES if none)
 testrail run close R3 --yes
+testrail run delete R3 --yes   # removes its tests and results; closed runs need the "delete completed test runs" permission
 
 testrail test list R3 [--status failed,retest] [--limit <n>]   # tests in a run (100)
 testrail test view T45 [--results <0-100>]   # status, steps, latest results (5)
@@ -100,6 +101,7 @@ All entries are added in one request, so either all land or none do.
 - `run view`: `{id, name, url, description, suiteId, planId, includeAll, completed, completedOn, refs, counts, created}`
 - `run create`: `{id, name, url, completed, completedOn, counts, includeAll, jira: {key, url}|null}`
 - `run close`: `{id, name, url, completed, completedOn, counts}`
+- `run delete`: `{id, name, deleted: true}`
 - `test list`: `{runId, tests: [{id, caseId, title, status}], hasMore}`
 - `test view`: `{id, title, url, caseId, runId, status, refs, preconditions, steps, expected, stepList, results: {shown: [result], hasMore}}`
 - `result add`: a result plus `{testId, bug: {key, url}|null, url}`
