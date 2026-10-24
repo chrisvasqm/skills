@@ -1,11 +1,11 @@
 ---
 name: test-cli
-description: Read and update TestRail from the shell with the `test-cli` CLI (formerly testrail-cli; `testrail` still works as an alias). Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, files a Jira bug for a failed test, creates runs from a Jira sprint or epic, reports test coverage of a sprint, epic or JQL search, posts a run's results to its Jira tickets, and sets tests back to Retest when their Jira bugs are done. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
+description: Read and update TestRail from the shell with the `test-cli` CLI (formerly testrail-cli). Use it to list or read test cases, runs, tests and their history, report results (one or many at once, e.g. from CI, with per-step statuses and attachments), create, edit, rerun, close or delete runs and test plans, create, edit, copy, move or delete cases, manage sections, suites and milestones, assign tests, and run reports. With the `jira` CLI it also links Jira keys to cases, runs and tests, creates cases and runs from a Jira ticket, lists the cases linked to a ticket, files a Jira bug for a failed test, creates runs from a Jira sprint or epic, reports test coverage of a sprint, epic or JQL search, posts a run's results to its Jira tickets, and sets tests back to Retest when their Jira bugs are done. Use it instead of a TestRail MCP server when the user mentions TestRail, a test case like C12, a run or test plan like R3, a test like T45, a milestone like M2, reporting test results, or test cases for a Jira ticket like KAN-12.
 ---
 
 # test-cli
 
-`test-cli` is a small test management CLI. TestRail is its only provider today; the config's `provider` field names it. Version 3 also installs `testrail` as an alias for `test-cli`.
+`test-cli` is a small test management CLI. TestRail is its only provider today; the config's `provider` field names it. Since 4.0 there is no `testrail` alias; always call `test-cli`.
 
 ## Setup
 
